@@ -17,18 +17,16 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 
-class TaintPropagationLegacyPass : public llvm::ModulePass
-{
+class TaintPropagationLegacyPass : public llvm::ModulePass {
 public:
-    static char ID;
+  static char ID;
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        // AU.addRequired<llvm::UnifyFunctionExitNodes>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    // AU.addRequired<llvm::UnifyFunctionExitNodes>();
+  }
 
-    TaintPropagationLegacyPass() : ModulePass(ID) {}
+  TaintPropagationLegacyPass() : ModulePass(ID) {}
 
-    bool runOnModule(llvm::Module &M) override;
+  bool runOnModule(llvm::Module &M) override;
 };
-#endif  // TAINTPROPAGATION_H
+#endif // TAINTPROPAGATION_H

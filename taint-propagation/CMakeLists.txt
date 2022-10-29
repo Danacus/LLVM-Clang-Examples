@@ -1,46 +1,38 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.13.4)
+project(taint-propagation)
 
-set(PROJECT_NAME test-tp)
+#===============================================================================
+# 1. LOAD LLVM CONFIGURATION
+#===============================================================================
+# Set this to a valid LLVM installation dir
+set(LT_LLVM_INSTALL_DIR "" CACHE PATH "LLVM installation directory")
 
-project(${PROJECT_NAME})
-
-if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
-  message(FATAL_ERROR
-    "In-source builds are not allowed. Please clean your source tree and try again.")
-endif()
+# Add the location of LLVMConfig.cmake to CMake search paths (so that
+# find_package can locate it)
+list(APPEND CMAKE_PREFIX_PATH "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
 
 find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+# HelloWorld includes headers from LLVM - update the include paths accordingly
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 
-add_executable(${PROJECT_NAME} src/TaintPropagation.cpp src/main.cpp)
+#===============================================================================
+# 2. LLVM-TUTOR BUILD CONFIGURATION
+#===============================================================================
+# Use the same C++ standard as LLVM does
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "")
 
-llvm_map_components_to_libnames(DEP_LLVM_LIBS
-  aggressiveinstcombine
-  analysis
-  asmparser
-  bitreader
-  bitwriter
-  codegen
-  core
-  coroutines
-  instcombine
-  instrumentation
-  ipo
-  irreader
-  mc
-  objcarcopts
-  scalaropts
-  support
-  target
-  transformutils
-  vectorize
-)
+# LLVM is normally built without RTTI. Be consistent with that.
+if(NOT LLVM_ENABLE_RTTI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
 
-target_link_libraries(${PROJECT_NAME} ${DEP_LLVM_LIBS})
+#===============================================================================
+# 3. ADD THE TARGET
+#===============================================================================
+add_library(TaintPropagation SHARED src/TaintPropagation.cpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O0 -fno-strict-aliasing -fno-exceptions -fno-rtti")
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+# Allow undefined symbols in shared objects on Darwin (this is the default
+# behaviour on Linux)
+target_link_libraries(TaintPropagation
+  "$<$<PLATFORM_ID:Darwin>:-undefined dynamic_lookup>")
