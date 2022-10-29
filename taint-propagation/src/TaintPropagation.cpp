@@ -1091,8 +1091,9 @@ void TaintSolver::Print(raw_ostream &OS) const {
   }
 }
 
-static bool runTP(Module &M) {
+static TaintPropagationLegacyPass::TaintMap runTP(Module &M) {
   std::unordered_map<Value *, SmallPtrSet<Value *, 16>> ValueDependencyMap;
+  TaintPropagationLegacyPass::TaintMap TaintData;
 
   for (Function &F : M) {
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
@@ -1143,9 +1144,9 @@ static bool runTP(Module &M) {
   for (Function &F : M) {
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
       Instruction *I = &*i;
-      SmallVector<Metadata *, 4> TaintsMetadatas;
+      // SmallVector<Metadata *, 4> TaintsMetadatas;
+      SmallVector<Value *> Taints;
 
-      std::vector<Value *> Taints;
       if (auto *V = dyn_cast<Value>(I)) {
         Taints.push_back(V);
       }
@@ -1156,27 +1157,48 @@ static bool runTP(Module &M) {
         Taints.push_back(V);
       }
 
+      SmallVector<Value *> TaintedValues;
+
       for (auto *V : Taints) {
         auto TLK = TaintLatticeKey(V, IPOGrouping::Register);
         TaintLatticeVal TLV = Solver.getExistingValueState(TLK);
         if (TLV.isTainted() && reachable(TLV.getTaintedAtInsts(), I)) {
-          TaintsMetadatas.push_back(ValueAsMetadata::get(V));
+          // TaintsMetadatas.push_back(ValueAsMetadata::get(V));
+          TaintedValues.push_back(V);
         }
       }
 
+      /* This is broken!
       if (!TaintsMetadatas.empty()) {
         MDNode *TaintMDNode = MDNode::get(M.getContext(), TaintsMetadatas);
+        TaintMDNode->dump();
         I->setMetadata(MD_TAINT, TaintMDNode);
+      }
+      */
+      if (!TaintedValues.empty()) {
+        TaintData.insert(std::pair(I, TaintedValues));
       }
     }
   }
-  return false;
+  return TaintData;
 }
 
 bool TaintPropagationLegacyPass::runOnModule(Module &M) {
   if (skipModule(M))
     return false;
-  return runTP(M);
+  TaintData = runTP(M);
+
+  for (auto P : TaintData) {
+    errs() << "Instruction\n" << *P.getFirst() << "\nhas taints: \n";
+
+    for (auto T : P.getSecond()) {
+      errs() << *T << "\n";
+    }
+
+    errs() << "\n";
+  }
+
+  return false;
 }
 
 char TaintPropagationLegacyPass::ID = 0;

@@ -19,6 +19,9 @@
 
 class TaintPropagationLegacyPass : public llvm::ModulePass {
 public:
+  using TaintMap =
+      llvm::DenseMap<llvm::Instruction *, llvm::SmallVector<llvm::Value *>>;
+
   static char ID;
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
@@ -28,5 +31,9 @@ public:
   TaintPropagationLegacyPass() : ModulePass(ID) {}
 
   bool runOnModule(llvm::Module &M) override;
+  TaintMap getTaintMap() { return TaintData; }
+
+private:
+  TaintMap TaintData;
 };
 #endif // TAINTPROPAGATION_H

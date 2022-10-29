@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define get_uint16(bptr) (((bptr)[0] << 8) | (bptr)[1])
 
